@@ -33,10 +33,10 @@ public class Renderer extends AbstractRenderer {
         glEnable(GL_DEPTH_TEST);
 
         camera = new Camera()
-                .withPosition(new Vec3D(0.f, 0f, 0f))
+                .withPosition(new Vec3D(3.f, 3f, 2f))
                 .withAzimuth(Math.PI * 1.25)
                 .withZenith(Math.PI * -0.125)
-                .withFirstPerson(false)
+                .withFirstPerson(true)
                 .withRadius(3);
 
         projection = new Mat4PerspRH(Math.PI / 3, 600 / (float) 800, 0.1f, 50.f);
@@ -45,7 +45,7 @@ public class Renderer extends AbstractRenderer {
         glUseProgram(shaderProgram);
 
         // Grid
-        grid = new Grid(10, 10);
+        grid = new Grid(4, 4, GL_TRIANGLE_STRIP);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class Renderer extends AbstractRenderer {
         int loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
 
-        grid.getBuffers().draw(GL_TRIANGLES, shaderProgram);
+        grid.getBuffers().draw(GL_TRIANGLE_STRIP, shaderProgram);
     }
 
     private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
