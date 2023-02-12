@@ -25,6 +25,8 @@ public class Renderer extends AbstractRenderer {
     private int shaderProgram;
     private Grid grid;
     private final int width = 800, height = 600;
+    private int mode = 0;
+    private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
 
     @Override
     public void init() {
@@ -79,6 +81,10 @@ public class Renderer extends AbstractRenderer {
                         break;
                     case GLFW_KEY_D:
                         camera = camera.right(0.5);
+                        break;
+                    case GLFW_KEY_M:
+                        mode = (++mode) % 3;
+                        changePolygonMode(mode);
                         break;
                 }
             }
@@ -150,5 +156,9 @@ public class Renderer extends AbstractRenderer {
     @Override
     public GLFWCursorPosCallback getCursorCallback() {
         return cpCallbacknew;
+    }
+
+    public void changePolygonMode(int mode) {
+        glPolygonMode(GL_FRONT_AND_BACK, polygonModes[mode]);
     }
 }
