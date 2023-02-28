@@ -22,15 +22,21 @@ public class Renderer extends AbstractRenderer {
     double ox, oy;
     boolean mouseButton1 = false;
     private Mat4 projection;
-    private int shaderProgram;
+    private int shaderProgram, loc_uView, loc_uProj, loc_uType;
     private Grid grid;
     private final int width = 800, height = 600;
     private int mode = 0;
+    private int type = 0;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
+    private int m = 11, n = 11;
 
     @Override
     public void init() {
-        glEnable(GL_DEPTH_TEST);
+        shaderProgram = ShaderUtils.loadProgram("/shaders/Basic");
+
+        loc_uView = glGetUniformLocation(shaderProgram, "uView");
+        loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
+        loc_uType = glGetUniformLocation(shaderProgram, "uType");
 
         camera = new Camera()
                 .withPosition(new Vec3D(3.f, 3f, 2f))
@@ -41,25 +47,26 @@ public class Renderer extends AbstractRenderer {
 
         projection = new Mat4PerspRH(Math.PI / 3, 600 / (float) 800, 0.1f, 50.f);
 
-        shaderProgram = ShaderUtils.loadProgram("/shaders/Basic");
-        glUseProgram(shaderProgram);
+        renderGrid();
 
-        // Grid
-        grid = new Grid(4, 4, GL_TRIANGLE_STRIP);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     }
 
     @Override
     public void display() {
-        int loc_uColor = glGetUniformLocation(shaderProgram, "uColor");
-        glUniform3f(loc_uColor, 1.f, 1.f, 0.f);
+        glEnable(GL_DEPTH_TEST);
 
-        int loc_uView = glGetUniformLocation(shaderProgram, "uView");
         glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
-
-        int loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
+        glUniform1f(loc_uType, type);
 
-        grid.getBuffers().draw(GL_TRIANGLE_STRIP, shaderProgram);
+        glUseProgram(shaderProgram);
+
+        grid.getBuffers().draw(GL_TRIANGLES, shaderProgram);
+    }
+
+    public void renderGrid() {
+        grid = new Grid(m, n, GL_TRIANGLES);
     }
 
     private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
@@ -82,10 +89,32 @@ public class Renderer extends AbstractRenderer {
                     case GLFW_KEY_D:
                         camera = camera.right(0.5);
                         break;
+                    case GLFW_KEY_SPACE:
+                        camera = camera.up(0.5);
+                        break;
+                    case GLFW_KEY_LEFT_CONTROL:
+                        camera = camera.down(0.5);
+                        break;
                     case GLFW_KEY_M:
                         mode = (++mode) % 3;
                         changePolygonMode(mode);
                         break;
+                    case GLFW_KEY_T:
+                        type = (++type) % 10;
+                        break;
+                    case GLFW_KEY_KP_1:
+                        m += 2;
+                        n += 2;
+                        renderGrid();
+                        break;
+                    case GLFW_KEY_KP_2:
+                        if (m > 5 && n > 5) {
+                            m -= 2;
+                            n -= 2;
+                            renderGrid();
+                        }
+                        break;
+
                 }
             }
         }
