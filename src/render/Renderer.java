@@ -1,5 +1,6 @@
 package render;
 
+import lwjglutils.OGLTexture2D;
 import lwjglutils.ShaderUtils;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
@@ -7,11 +8,9 @@ import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
 import solids.Grid;
-import transforms.Camera;
-import transforms.Mat4;
-import transforms.Mat4PerspRH;
-import transforms.Vec3D;
+import transforms.*;
 
+import java.io.IOException;
 import java.nio.DoubleBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -21,22 +20,26 @@ public class Renderer extends AbstractRenderer {
     private Camera camera;
     double ox, oy;
     boolean mouseButton1 = false;
-    private Mat4 projection;
-    private int shaderProgram, loc_uView, loc_uProj, loc_uType;
+    private Mat4 projection, ortho;
+    private int shaderProgram, loc_uView, loc_uProj, loc_uOrtho, loc_uTypeGrid, loc_uTypeProjection, loc_uTime, loc_uTypeColor;
     private Grid grid;
     private final int width = 800, height = 600;
-    private int mode = 0;
-    private int type = 0;
+    private int mode = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
+    private OGLTexture2D texture;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
-    private int m = 11, n = 11;
+    private int m = 500;
 
     @Override
-    public void init() {
+    public void init() throws IOException {
         shaderProgram = ShaderUtils.loadProgram("/shaders/Basic");
 
         loc_uView = glGetUniformLocation(shaderProgram, "uView");
         loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
-        loc_uType = glGetUniformLocation(shaderProgram, "uType");
+        loc_uOrtho = glGetUniformLocation(shaderProgram, "uOrtho");
+        loc_uTypeGrid = glGetUniformLocation(shaderProgram, "uTypeGrid");
+        loc_uTypeProjection = glGetUniformLocation(shaderProgram, "uTypeProjection");
+        loc_uTypeColor = glGetUniformLocation(shaderProgram, "uTypeColor");
+        loc_uTime = glGetUniformLocation(shaderProgram, "uTime");
 
         camera = new Camera()
                 .withPosition(new Vec3D(3.f, 3f, 2f))
@@ -46,6 +49,11 @@ public class Renderer extends AbstractRenderer {
                 .withRadius(3);
 
         projection = new Mat4PerspRH(Math.PI / 3, 600 / (float) 800, 0.1f, 50.f);
+        ortho = new Mat4OrthoRH((double) width / 90, (double) height / 90, 0.1f, 50.f);
+
+        texture = new OGLTexture2D("textures/bricks.jpg");
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         renderGrid();
 
@@ -58,15 +66,17 @@ public class Renderer extends AbstractRenderer {
 
         glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
-        glUniform1f(loc_uType, type);
+        glUniformMatrix4fv(loc_uOrtho, false, ortho.floatArray());
+        glUniform1i(loc_uTypeGrid, typeGrid);
+        glUniform1i(loc_uTypeProjection, typeProjection);
+        glUniform1i(loc_uTypeColor, typeColor);
+        glUniform1f(loc_uTime, (float) glfwGetTime());
+
+        texture.bind(shaderProgram, "uTextureID", 0);
 
         glUseProgram(shaderProgram);
 
         grid.getBuffers().draw(GL_TRIANGLES, shaderProgram);
-    }
-
-    public void renderGrid() {
-        grid = new Grid(m, n, GL_TRIANGLES);
     }
 
     private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
@@ -99,18 +109,22 @@ public class Renderer extends AbstractRenderer {
                         mode = (++mode) % 3;
                         changePolygonMode(mode);
                         break;
-                    case GLFW_KEY_T:
-                        type = (++type) % 10;
+                    case GLFW_KEY_G:
+                        typeGrid = (++typeGrid) % 7;
+                        break;
+                    case GLFW_KEY_P:
+                        typeProjection = (++typeProjection) % 2;
+                        break;
+                    case GLFW_KEY_C:
+                        typeColor = (++typeColor) % 2;
                         break;
                     case GLFW_KEY_KP_1:
-                        m += 2;
-                        n += 2;
+                        m += 10;
                         renderGrid();
                         break;
                     case GLFW_KEY_KP_2:
-                        if (m > 5 && n > 5) {
-                            m -= 2;
-                            n -= 2;
+                        if (m > 5) {
+                            m -= 10;
                             renderGrid();
                         }
                         break;
@@ -189,5 +203,9 @@ public class Renderer extends AbstractRenderer {
 
     public void changePolygonMode(int mode) {
         glPolygonMode(GL_FRONT_AND_BACK, polygonModes[mode]);
+    }
+
+    public void renderGrid() {
+        grid = new Grid(m, m, GL_TRIANGLES);
     }
 }

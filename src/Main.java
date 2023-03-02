@@ -6,6 +6,7 @@ import org.lwjgl.system.MemoryStack;
 import render.AbstractRenderer;
 import render.Renderer;
 
+import java.io.IOException;
 import java.nio.IntBuffer;
 
 import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
@@ -24,7 +25,7 @@ public class Main {
         this.renderer = renderer;
     }
 
-    public void run() {
+    public void run() throws IOException {
         System.out.println("Hello LWJGL " + Version.getVersion() + "!");
 
         init();
@@ -45,7 +46,7 @@ public class Main {
         GLFWErrorCallback.createPrint(System.err).set();
 
         // Initialize GLFW. Most GLFW functions will not work before doing this.
-        if ( !glfwInit() )
+        if (!glfwInit())
             throw new IllegalStateException("Unable to initialize GLFW");
 
         // Configure GLFW
@@ -55,18 +56,18 @@ public class Main {
 
         // Create the window
         window = glfwCreateWindow(800, 600, "PGRF3", NULL, NULL);
-        if ( window == NULL )
+        if (window == NULL)
             throw new RuntimeException("Failed to create the GLFW window");
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         glfwSetKeyCallback(window, renderer.getKeyCallback());
-        glfwSetWindowSizeCallback(window,renderer.getWsCallback());
-        glfwSetMouseButtonCallback(window,renderer.getMouseCallback());
-        glfwSetCursorPosCallback(window,renderer.getCursorCallback());
-        glfwSetScrollCallback(window,renderer.getScrollCallback());
+        glfwSetWindowSizeCallback(window, renderer.getWsCallback());
+        glfwSetMouseButtonCallback(window, renderer.getMouseCallback());
+        glfwSetCursorPosCallback(window, renderer.getCursorCallback());
+        glfwSetScrollCallback(window, renderer.getScrollCallback());
 
         // Get the thread stack and push a new frame
-        try ( MemoryStack stack = stackPush() ) {
+        try (MemoryStack stack = stackPush()) {
             IntBuffer pWidth = stack.mallocInt(1); // int*
             IntBuffer pHeight = stack.mallocInt(1); // int*
 
@@ -93,7 +94,7 @@ public class Main {
         glfwShowWindow(window);
     }
 
-    private void loop() {
+    private void loop() throws IOException {
         // This line is critical for LWJGL's interoperation with GLFW's
         // OpenGL context, or any context that is managed externally.
         // LWJGL detects the context that is current in the current thread,
@@ -108,7 +109,7 @@ public class Main {
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
-        while ( !glfwWindowShouldClose(window) ) {
+        while (!glfwWindowShouldClose(window)) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
             renderer.display();
@@ -121,7 +122,7 @@ public class Main {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new Main(new Renderer()).run();
     }
 }
