@@ -12,6 +12,7 @@ import transforms.*;
 
 import java.io.IOException;
 import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL33.*;
@@ -22,6 +23,7 @@ public class Renderer extends AbstractRenderer {
     boolean mouseButton1 = false;
     private Mat4 projection, ortho;
     private int shaderProgram, loc_uView, loc_uProj, loc_uOrtho, loc_uTypeGrid, loc_uTypeProjection, loc_uTime, loc_uTypeColor;
+    private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
     private Grid grid;
     private final int width = 800, height = 600;
     private int mode = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
@@ -31,7 +33,7 @@ public class Renderer extends AbstractRenderer {
 
     @Override
     public void init() throws IOException {
-        shaderProgram = ShaderUtils.loadProgram("/shaders/Basic");
+        shaderProgram = ShaderUtils.loadProgram("/shaders/Light/Main");
 
         loc_uView = glGetUniformLocation(shaderProgram, "uView");
         loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
@@ -40,6 +42,12 @@ public class Renderer extends AbstractRenderer {
         loc_uTypeProjection = glGetUniformLocation(shaderProgram, "uTypeProjection");
         loc_uTypeColor = glGetUniformLocation(shaderProgram, "uTypeColor");
         loc_uTime = glGetUniformLocation(shaderProgram, "uTime");
+
+        loc_uLightSource = glGetUniformLocation(shaderProgram, "uLightSource");
+        loc_uAmbient = glGetUniformLocation(shaderProgram, "uAmbient");
+        loc_uDiffuse = glGetUniformLocation(shaderProgram, "uDiffuse");
+        loc_uSpecular = glGetUniformLocation(shaderProgram, "uSpecular");
+        loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
 
         camera = new Camera()
                 .withPosition(new Vec3D(3.f, 3f, 2f))
@@ -54,6 +62,8 @@ public class Renderer extends AbstractRenderer {
         texture = new OGLTexture2D("textures/bricks.jpg");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glShadeModel(GL_SMOOTH);
 
         renderGrid();
 
@@ -71,6 +81,12 @@ public class Renderer extends AbstractRenderer {
         glUniform1i(loc_uTypeProjection, typeProjection);
         glUniform1i(loc_uTypeColor, typeColor);
         glUniform1f(loc_uTime, (float) glfwGetTime());
+
+        glUniform3f(loc_uLightSource, -3.f, -3f, -2f);
+        glUniform4f(loc_uAmbient, 0.3f, 0.3f, 0.3f, 1f);
+        glUniform4f(loc_uDiffuse, 0.6f, 0.6f, 0.6f, 1f);
+        glUniform4f(loc_uSpecular, 1f, 1f, 1f, 1f);
+        glUniform1f(loc_uSpecularPower, 10f);
 
         texture.bind(shaderProgram, "uTextureID", 0);
 
@@ -123,7 +139,7 @@ public class Renderer extends AbstractRenderer {
                         renderGrid();
                         break;
                     case GLFW_KEY_KP_2:
-                        if (m > 5) {
+                        if (m > 10) {
                             m -= 10;
                             renderGrid();
                         }

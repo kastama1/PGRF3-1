@@ -2,6 +2,7 @@
 
 in vec3 color;
 in vec2 texCoord;
+in float intensity;
 
 out vec4 outColor;
 
