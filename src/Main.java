@@ -18,7 +18,7 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 public class Main {
     // The window handle
     private long window;
-
+    private final static int width = 1500, height = 1000;
     private AbstractRenderer renderer;
 
     public Main(AbstractRenderer renderer) {
@@ -55,7 +55,7 @@ public class Main {
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 
         // Create the window
-        window = glfwCreateWindow(800, 600, "PGRF3", NULL, NULL);
+        window = glfwCreateWindow(width, height, "PGRF3", NULL, NULL);
         if (window == NULL)
             throw new RuntimeException("Failed to create the GLFW window");
 
@@ -123,6 +123,6 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        new Main(new Renderer()).run();
+        new Main(new Renderer(width, height)).run();
     }
 }

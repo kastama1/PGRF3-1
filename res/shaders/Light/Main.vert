@@ -17,15 +17,15 @@ vec3 func(float x, float y){
     float azimut = x * PI * 2;
     float zenit = y * PI;
 
-    return vec3(3 * cos(azimut) * sin(zenit), 2 * sin(azimut) * sin (zenit), 1 * cos(zenit));
+    return vec3(4 * cos(azimut) * sin(zenit), 4 * sin(azimut) * sin(zenit), 4 * cos(zenit));
 }
 
 vec3 getNormal(float x, float y) {
     float azimut = x * PI * 2;
     float zenit = y * PI;
 
-    vec3 dx = vec3(-3 * sin(azimut) * sin(zenit), 2 * cos(azimut) * sin(zenit), 0);
-    vec3 dy = vec3(3 * cos(azimut) * cos(zenit), 2 * sin(azimut) * cos(zenit), -sin(zenit));
+    vec3 dx = vec3(-4 * sin(azimut) * sin(zenit), 4 * cos(azimut) * sin(zenit), 0);
+    vec3 dy = vec3(4 * cos(azimut) * cos(zenit), 4 * sin(azimut) * cos(zenit), -4 * sin(zenit));
 
     return cross(dx, dy);
 }

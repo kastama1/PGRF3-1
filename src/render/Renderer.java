@@ -12,7 +12,6 @@ import transforms.*;
 
 import java.io.IOException;
 import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL33.*;
@@ -25,11 +24,14 @@ public class Renderer extends AbstractRenderer {
     private int shaderProgram, loc_uView, loc_uProj, loc_uOrtho, loc_uTypeGrid, loc_uTypeProjection, loc_uTime, loc_uTypeColor;
     private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
     private Grid grid;
-    private final int width = 800, height = 600;
     private int mode = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
     private OGLTexture2D texture;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
     private int m = 500;
+
+    public Renderer(int width, int height) {
+        super(width, height);
+    }
 
     @Override
     public void init() throws IOException {
@@ -50,7 +52,7 @@ public class Renderer extends AbstractRenderer {
         loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
 
         camera = new Camera()
-                .withPosition(new Vec3D(3.f, 3f, 2f))
+                .withPosition(new Vec3D(10.f, 10f, 5f))
                 .withAzimuth(Math.PI * 1.25)
                 .withZenith(Math.PI * -0.125)
                 .withFirstPerson(true)
