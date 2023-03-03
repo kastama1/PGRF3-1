@@ -11,13 +11,13 @@ uniform mat4 uView;
 uniform mat4 uProj;
 uniform vec3 uLightSource;
 
-const float PI = 3.1415;
+const float PI = 3.1416;
 
 vec3 func(float x, float y){
     float azimut = x * PI * 2;
     float zenit = y * PI;
 
-    return vec3(4 * cos(azimut) * sin(zenit), 4 * sin(azimut) * sin(zenit), 4 * cos(zenit));
+    return vec3(5 * cos(azimut) * sin(zenit), 5 * sin(azimut) * sin(zenit), 5 * cos(zenit));
 }
 
 vec3 getNormal(float x, float y) {
@@ -41,7 +41,6 @@ void main() {
     normal = inverse(transpose(mat3(uView))) * nor;
 
     vec4 lightPosition = uView * vec4(uLightSource, 1.0);
-    //vec4 lightPosition = vec4(uLightSource, 1.0);
 
     lightDirection = lightPosition.xyz - objectPosition.xyz;
 

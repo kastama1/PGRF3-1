@@ -23,6 +23,7 @@ public class Renderer extends AbstractRenderer {
     private Mat4 projection, ortho;
     private int shaderProgram, loc_uView, loc_uProj, loc_uOrtho, loc_uTypeGrid, loc_uTypeProjection, loc_uTime, loc_uTypeColor;
     private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
+    private int loc_uConstantAttenuation, loc_uLinearAttenuatuin, loc_uQuadraticAttenuation;
     private Grid grid;
     private int mode = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
     private OGLTexture2D texture;
@@ -35,7 +36,7 @@ public class Renderer extends AbstractRenderer {
 
     @Override
     public void init() throws IOException {
-        shaderProgram = ShaderUtils.loadProgram("/shaders/Light/Main");
+        shaderProgram = ShaderUtils.loadProgram("/shaders/Main/Main");
 
         loc_uView = glGetUniformLocation(shaderProgram, "uView");
         loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
@@ -50,6 +51,9 @@ public class Renderer extends AbstractRenderer {
         loc_uDiffuse = glGetUniformLocation(shaderProgram, "uDiffuse");
         loc_uSpecular = glGetUniformLocation(shaderProgram, "uSpecular");
         loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
+        loc_uConstantAttenuation = glGetUniformLocation(shaderProgram, "uConstantAttenuation");
+        loc_uLinearAttenuatuin = glGetUniformLocation(shaderProgram, "uLinearAttenuatuin");
+        loc_uQuadraticAttenuation = glGetUniformLocation(shaderProgram, "uQuadraticAttenuation");
 
         camera = new Camera()
                 .withPosition(new Vec3D(10.f, 10f, 5f))
@@ -84,11 +88,14 @@ public class Renderer extends AbstractRenderer {
         glUniform1i(loc_uTypeColor, typeColor);
         glUniform1f(loc_uTime, (float) glfwGetTime());
 
-        glUniform3f(loc_uLightSource, -3.f, -3f, -2f);
+        glUniform3f(loc_uLightSource, (float) -camera.getPosition().getX(), (float) -camera.getPosition().getY(), (float) -camera.getPosition().getZ());
         glUniform4f(loc_uAmbient, 0.3f, 0.3f, 0.3f, 1f);
         glUniform4f(loc_uDiffuse, 0.6f, 0.6f, 0.6f, 1f);
         glUniform4f(loc_uSpecular, 1f, 1f, 1f, 1f);
         glUniform1f(loc_uSpecularPower, 10f);
+        glUniform1f(loc_uConstantAttenuation, 0.01f);
+        glUniform1f(loc_uLinearAttenuatuin, 0.01f);
+        glUniform1f(loc_uQuadraticAttenuation, 0.01f);
 
         texture.bind(shaderProgram, "uTextureID", 0);
 
