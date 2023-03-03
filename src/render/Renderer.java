@@ -20,15 +20,18 @@ public class Renderer extends AbstractRenderer {
     private Camera camera;
     double ox, oy;
     boolean mouseButton1 = false;
-    private Mat4 projection, ortho;
-    private int shaderProgram, loc_uView, loc_uProj, loc_uOrtho, loc_uTypeGrid, loc_uTypeProjection, loc_uTime, loc_uTypeColor;
+    private Mat4 projection, ortho, model, transMat, scaleMat, rotXMat, rotYMat, rotZMat;
+    private int shaderProgram, loc_uModel, loc_uView, loc_uProj, loc_uOrtho;
+    private int loc_uTypeGrid, loc_uTypeProjection, loc_uTypeColor, loc_uTime;
     private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
-    private int loc_uConstantAttenuation, loc_uLinearAttenuatuin, loc_uQuadraticAttenuation;
+    private int loc_uConstantAttenuation, loc_uLinearAttenuation, loc_uQuadraticAttenuation;
     private Grid grid;
     private int mode = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
     private OGLTexture2D texture;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
     private int m = 500;
+
+    private double scale = 1, x = 0, y = 0, z = 0, rotX = 0, rotY = 0, rotZ = 0;
 
     public Renderer(int width, int height) {
         super(width, height);
@@ -38,6 +41,7 @@ public class Renderer extends AbstractRenderer {
     public void init() throws IOException {
         shaderProgram = ShaderUtils.loadProgram("/shaders/Main/Main");
 
+        loc_uModel = glGetUniformLocation(shaderProgram, "uModel");
         loc_uView = glGetUniformLocation(shaderProgram, "uView");
         loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
         loc_uOrtho = glGetUniformLocation(shaderProgram, "uOrtho");
@@ -52,7 +56,7 @@ public class Renderer extends AbstractRenderer {
         loc_uSpecular = glGetUniformLocation(shaderProgram, "uSpecular");
         loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
         loc_uConstantAttenuation = glGetUniformLocation(shaderProgram, "uConstantAttenuation");
-        loc_uLinearAttenuatuin = glGetUniformLocation(shaderProgram, "uLinearAttenuatuin");
+        loc_uLinearAttenuation = glGetUniformLocation(shaderProgram, "uLinearAttenuation");
         loc_uQuadraticAttenuation = glGetUniformLocation(shaderProgram, "uQuadraticAttenuation");
 
         camera = new Camera()
@@ -64,6 +68,7 @@ public class Renderer extends AbstractRenderer {
 
         projection = new Mat4PerspRH(Math.PI / 3, 600 / (float) 800, 0.1f, 50.f);
         ortho = new Mat4OrthoRH((double) width / 90, (double) height / 90, 0.1f, 50.f);
+        model = new Mat4Identity();
 
         texture = new OGLTexture2D("textures/bricks.jpg");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -80,6 +85,7 @@ public class Renderer extends AbstractRenderer {
     public void display() {
         glEnable(GL_DEPTH_TEST);
 
+        glUniformMatrix4fv(loc_uModel, false, model.floatArray());
         glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
         glUniformMatrix4fv(loc_uOrtho, false, ortho.floatArray());
@@ -94,7 +100,7 @@ public class Renderer extends AbstractRenderer {
         glUniform4f(loc_uSpecular, 1f, 1f, 1f, 1f);
         glUniform1f(loc_uSpecularPower, 10f);
         glUniform1f(loc_uConstantAttenuation, 0.01f);
-        glUniform1f(loc_uLinearAttenuatuin, 0.01f);
+        glUniform1f(loc_uLinearAttenuation, 0.01f);
         glUniform1f(loc_uQuadraticAttenuation, 0.01f);
 
         texture.bind(shaderProgram, "uTextureID", 0);
@@ -143,15 +149,73 @@ public class Renderer extends AbstractRenderer {
                     case GLFW_KEY_C:
                         typeColor = (++typeColor) % 2;
                         break;
-                    case GLFW_KEY_KP_1:
+                    case GLFW_KEY_KP_ADD:
                         m += 10;
                         renderGrid();
                         break;
-                    case GLFW_KEY_KP_2:
+                    case GLFW_KEY_KP_SUBTRACT:
                         if (m > 10) {
                             m -= 10;
                             renderGrid();
                         }
+                        break;
+                    case GLFW_KEY_J:
+                        x = 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_L:
+                        x = -0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_I:
+                        y = 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_K:
+                        y = -0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_U:
+                        z = 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_O:
+                        z = -0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_1:
+                        scale++;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_2:
+                        if (scale > 1) {
+                            scale--;
+                            setModelMat();
+                        }
+                        break;
+                    case GLFW_KEY_KP_4:
+                        rotX += 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_7:
+                        rotX -= 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_5:
+                        rotY += 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_8:
+                        rotY -= 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_6:
+                        rotZ += 0.1;
+                        setModelMat();
+                        break;
+                    case GLFW_KEY_KP_9:
+                        rotZ -= 0.1;
+                        setModelMat();
                         break;
 
                 }
@@ -232,5 +296,21 @@ public class Renderer extends AbstractRenderer {
 
     public void renderGrid() {
         grid = new Grid(m, m, GL_TRIANGLES);
+    }
+
+    public void setModelMat() {
+        transMat = new Mat4Transl(x, y, z);
+
+        scaleMat = new Mat4Scale(scale);
+
+        rotXMat = new Mat4RotX(rotX);
+        rotYMat = new Mat4RotY(rotY);
+        rotZMat = new Mat4RotZ(rotZ);
+
+        model = model.mul(transMat).mul(scaleMat).mul(rotXMat).mul(rotYMat).mul(rotZMat);
+
+        x = 0;
+        y = 0;
+        z = 0;
     }
 }

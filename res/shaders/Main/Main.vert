@@ -4,6 +4,7 @@ in vec2 inPosition;
 out vec3 color;
 out vec2 texCoord;
 
+uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProj;
 uniform mat4 uOrtho;
@@ -11,7 +12,7 @@ uniform int uTypeGrid;
 uniform int uTypeProjection;
 uniform float uTime;
 
-const float PI = 3.1415;
+const float PI = 3.1416;
 
 vec2 getSphere(vec2 position) {
     float azimut = position.x * PI;
@@ -80,9 +81,9 @@ void main() {
     vec4 finalPos = vec4(newPos, 1.f);
 
     if (uTypeProjection == 0){
-        gl_Position = uProj * uView * finalPos;
+        gl_Position = uProj * uView * uModel * finalPos;
     } else if (uTypeProjection == 1) {
-        gl_Position = uOrtho * uView * finalPos;
+        gl_Position = uOrtho * uView * uModel * finalPos;
     }
 
     color = vec3(finalPos.xyz);
