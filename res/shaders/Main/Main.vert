@@ -7,7 +7,6 @@ out vec2 texCoord;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProj;
-uniform mat4 uOrtho;
 uniform int uTypeGrid;
 uniform int uTypeProjection;
 uniform float uTime;
@@ -39,25 +38,34 @@ vec3 getCartesianFromSphere(vec3 sphere) {
 void main() {
     vec2 position = inPosition * 2 - 1;
     vec3 newPos;
+
+
     if (uTypeGrid == 0){
+        // Cartesian
+        // Object transform in time
         float offset = uTime;
         float z = 0.2 * sin(5.0 * position.x + offset);
         newPos = vec3(position.xy, z);
     } else if (uTypeGrid == 1){
+        // Cartesian
         float z = 2 + position.x/4 + position.y/2;
         newPos = vec3(position.xy, z);
     } else if (uTypeGrid == 2){
+        // Cartesian
         float z = position.x * position.y;
         newPos = vec3(position.xy, z);
     } else if (uTypeGrid == 3){
+        // Sphere
         vec2 sphere = getSphere(position);
         float r = 3 * cos(4 * sphere.y);
         newPos = getCartesianFromSphere(vec3(sphere, r));
     } else if (uTypeGrid == 4){
+        // Sphere
         vec2 sphere = getSphere(position);
         float r = 2 + sin(5 * sphere.x + 7 * sphere.y);
         newPos = getCartesianFromSphere(vec3(sphere, r));
     } else if (uTypeGrid == 5){
+        // Cylinder
         vec2 cylinder = getCylinder(position);
 
         float a = 3;
@@ -69,6 +77,7 @@ void main() {
 
         newPos = vec3(x, y, z);
     } else if (uTypeGrid == 6){
+        // Cylinder
         vec2 cylinder = getCylinder(position);
 
         float x = cylinder.x;
@@ -80,11 +89,7 @@ void main() {
 
     vec4 finalPos = vec4(newPos, 1.f);
 
-    if (uTypeProjection == 0){
-        gl_Position = uProj * uView * uModel * finalPos;
-    } else if (uTypeProjection == 1) {
-        gl_Position = uOrtho * uView * uModel * finalPos;
-    }
+    gl_Position = uProj * uView * uModel * finalPos;
 
     color = vec3(finalPos.xyz);
     texCoord = vec2(finalPos.xy);

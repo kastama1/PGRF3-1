@@ -9,8 +9,8 @@ in float dist;
 
 out vec4 outColor;
 
-uniform vec4 uDiffuse;
 uniform vec4 uAmbient;
+uniform vec4 uDiffuse;
 uniform vec4 uSpecular;
 uniform float uSpecularPower;
 uniform float uConstantAttenuation, uLinearAttenuatuin, uQuadraticAttenuation;
