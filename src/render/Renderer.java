@@ -1,5 +1,6 @@
 package render;
 
+import lwjglutils.OGLTextRenderer;
 import lwjglutils.OGLTexture2D;
 import lwjglutils.ShaderUtils;
 import org.lwjgl.BufferUtils;
@@ -31,8 +32,10 @@ public class Renderer extends AbstractRenderer {
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
     private final int[] topology = {GL_TRIANGLES, GL_TRIANGLE_STRIP};
     private int m = 50;
-
+    private float ambientStrength = 0.12f, diffuseStrength = 1.52f, specularStrength = 2f;
     private double scale = 1, x = 0, y = 0, z = 0, rotX = 0, rotY = 0, rotZ = 0;
+    private final String[] textTopology = {"GL_TRIANGLES", "GL_TRIANGLE_STRIP"};
+    private final String[] textPolygonMode = {"GL_FILL", "GL_LINE", "GL_POINT"};
 
     public Renderer(int width, int height) {
         super(width, height);
@@ -57,11 +60,17 @@ public class Renderer extends AbstractRenderer {
         renderGrid();
 
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+
+        textRenderer = new OGLTextRenderer(width, height);
     }
 
     @Override
     public void display() {
         glEnable(GL_DEPTH_TEST);
+
+        glViewport(0, 0, width, height);
+
+        changePolygonMode();
 
         // Display shader by typeShader
         if (typeShader == 0) {
@@ -71,8 +80,20 @@ public class Renderer extends AbstractRenderer {
         }
 
         glUseProgram(shaderProgram);
-
         grid.getBuffers().draw(topology[indexTopology], shaderProgram);
+
+        String text = "Change grid [G] " + typeGrid + "; ";
+        text += "Topology [T] " + textTopology[indexTopology] + "; ";
+        text += "Polygon mode [M] " + textPolygonMode[modePolygon] + "; ";
+        text += "Number of vertex [+, -] " + m + "; ";
+
+        textRenderer.addStr2D(10, 30, text);
+
+        text = "Object movement [I,K,J,L]; ";
+        text += "Rotation X [4,7]; Rotation Y [5,8]; Rotation Z [69]; ";
+        text += "Scale [1,2]; ";
+
+        textRenderer.addStr2D(10, 50, text);
     }
 
     private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
@@ -139,33 +160,33 @@ public class Renderer extends AbstractRenderer {
                         break;
                     // Rotation of object
                     case GLFW_KEY_KP_4:
-                        rotX += 0.1;
+                        rotX = 0.1;
                         setModelMat();
                         break;
                     case GLFW_KEY_KP_7:
-                        rotX -= 0.1;
+                        rotX = -0.1;
                         setModelMat();
                         break;
                     case GLFW_KEY_KP_5:
-                        rotY += 0.1;
+                        rotY = 0.1;
                         setModelMat();
                         break;
                     case GLFW_KEY_KP_8:
-                        rotY -= 0.1;
+                        rotY = -0.1;
                         setModelMat();
                         break;
                     case GLFW_KEY_KP_6:
-                        rotZ += 0.1;
+                        rotZ = 0.1;
                         setModelMat();
                         break;
                     case GLFW_KEY_KP_9:
-                        rotZ -= 0.1;
+                        rotZ = -0.1;
                         setModelMat();
                         break;
                     // Change polygon mode
                     case GLFW_KEY_M:
                         modePolygon = (++modePolygon) % 3;
-                        changePolygonMode(modePolygon);
+                        changePolygonMode();
                         break;
                     // Change polygon mode
                     case GLFW_KEY_T:
@@ -291,10 +312,14 @@ public class Renderer extends AbstractRenderer {
         x = 0;
         y = 0;
         z = 0;
+
+        rotX = 0;
+        rotY = 0;
+        rotZ = 0;
     }
 
-    public void changePolygonMode(int mode) {
-        glPolygonMode(GL_FRONT_AND_BACK, polygonModes[mode]);
+    public void changePolygonMode() {
+        glPolygonMode(GL_FRONT_AND_BACK, polygonModes[modePolygon]);
     }
 
     public void initProjection() {
@@ -343,10 +368,10 @@ public class Renderer extends AbstractRenderer {
         glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
 
-        glUniform3f(loc_uLightSource, (float) -camera.getPosition().getX(), (float) -camera.getPosition().getY(), (float) -camera.getPosition().getZ());
-        glUniform4f(loc_uAmbient, 0.3f, 0.3f, 0.3f, 1f);
-        glUniform4f(loc_uDiffuse, 0.6f, 0.6f, 0.6f, 1f);
-        glUniform4f(loc_uSpecular, 1f, 1f, 1f, 1f);
+        glUniform3f(loc_uLightSource, -10f, -10f, -3f);
+        glUniform4f(loc_uAmbient, ambientStrength, ambientStrength, ambientStrength, ambientStrength);
+        glUniform4f(loc_uDiffuse, diffuseStrength, diffuseStrength, diffuseStrength, diffuseStrength);
+        glUniform4f(loc_uSpecular, specularStrength, specularStrength, specularStrength, specularStrength);
         glUniform1f(loc_uSpecularPower, 10f);
         glUniform1f(loc_uConstantAttenuation, 0.01f);
         glUniform1f(loc_uLinearAttenuation, 0.01f);
@@ -359,7 +384,6 @@ public class Renderer extends AbstractRenderer {
 
         texture = new OGLTexture2D("textures/bricks.jpg");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         loc_uModel = glGetUniformLocation(shaderProgram, "uModel");
         loc_uView = glGetUniformLocation(shaderProgram, "uView");

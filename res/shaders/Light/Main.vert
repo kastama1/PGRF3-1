@@ -7,6 +7,7 @@ out vec3 lightDirection;
 out vec3 viewDirection;
 out float dist;
 
+uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProj;
 uniform vec3 uLightSource;
@@ -32,15 +33,15 @@ vec3 getNormal(float x, float y) {
 
 void main() {
     vec3 position = func(inPosition.x, inPosition.y);
-    vec4 objectPosition = uView * vec4(position, 1.0);
+    vec4 objectPosition = uView * uModel * vec4(position, 1.0);
 
     gl_Position = uProj * objectPosition;
 
     vec3 nor = normalize(getNormal(inPosition.x, inPosition.y));
 
-    normal = inverse(transpose(mat3(uView))) * nor;
+    normal = inverse(transpose(mat3(uView * uModel))) * nor;
 
-    vec4 lightPosition = uView * vec4(uLightSource, 1.0);
+    vec4 lightPosition = uView * uModel * vec4(uLightSource, 1.0);
 
     lightDirection = lightPosition.xyz - objectPosition.xyz;
 
@@ -48,5 +49,5 @@ void main() {
 
     dist = length(lightDirection);
 
-    color = vec3(0.5, 0.5, 1);
+    color = vec3(0.5, 0.5, 0.5);
 }
