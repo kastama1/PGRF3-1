@@ -21,29 +21,57 @@ public class Renderer extends AbstractRenderer {
     private Camera camera;
     double ox, oy;
     boolean mouseButton1 = false;
-    private Mat4 projection, model, transMat, scaleMat, rotXMat, rotYMat, rotZMat;
+    private Mat4 projection;
+    private Mat4 model;
     private int shaderProgram, loc_uModel, loc_uView, loc_uProj;
-    private int loc_uTypeGrid, loc_uTypeColor, loc_uTime;
+    private int loc_uModeGrid, loc_uModeColor, loc_uTime;
     private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
     private int loc_uConstantAttenuation, loc_uLinearAttenuation, loc_uQuadraticAttenuation;
+    private int loc_uModeLight;
     private Grid grid;
-    private int modePolygon = 0, indexTopology = 0, typeShader = 0, typeGrid = 0, typeProjection = 0, typeColor = 0;
+    private int modePolygon = 0, modeTopology = 0, modeGrid = 0, modeProjection = 0, modeColor = 0;
+    private int modeLight = 0;
     private OGLTexture2D texture;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
     private final int[] topology = {GL_TRIANGLES, GL_TRIANGLE_STRIP};
     private int m = 50;
-    private float ambientStrength = 0.12f, diffuseStrength = 1.52f, specularStrength = 2f;
     private double scale = 1, x = 0, y = 0, z = 0, rotX = 0, rotY = 0, rotZ = 0;
     private final String[] textTopology = {"GL_TRIANGLES", "GL_TRIANGLE_STRIP"};
-    private final String[] textPolygonMode = {"GL_FILL", "GL_LINE", "GL_POINT"};
+    private final String[] textPolygon = {"GL_FILL", "GL_LINE", "GL_POINT"};
+    private final String[] textColor = {"Color", "Position X, Y, Z", "Normal", "Texture coord U, V", "Depth", "Texture", "Lightning", "Texture and Lightning", "Distance from light"};
+    private final String[] textLight = {"Ambient", "Ambient + Diffuse", "Ambient + Diffuse + Specular", "Ambient + Diffuse + Specular + Attenuation"};
 
     public Renderer(int width, int height) {
         super(width, height);
     }
 
     @Override
-    public void init() {
-        initShader();
+    public void init() throws IOException {
+        shaderProgram = ShaderUtils.loadProgram("/shaders/Main/Main");
+
+        loc_uModel = glGetUniformLocation(shaderProgram, "uModel");
+        loc_uView = glGetUniformLocation(shaderProgram, "uView");
+        loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
+
+        texture = new OGLTexture2D("textures/bricks.jpg");
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        loc_uModeGrid = glGetUniformLocation(shaderProgram, "uModeGrid");
+        loc_uModeColor = glGetUniformLocation(shaderProgram, "uModeColor");
+        loc_uModeLight = glGetUniformLocation(shaderProgram, "uModeLight");
+
+        loc_uTime = glGetUniformLocation(shaderProgram, "uTime");
+
+        loc_uLightSource = glGetUniformLocation(shaderProgram, "uLightSource");
+
+        loc_uAmbient = glGetUniformLocation(shaderProgram, "uAmbient");
+        loc_uDiffuse = glGetUniformLocation(shaderProgram, "uDiffuse");
+        loc_uSpecular = glGetUniformLocation(shaderProgram, "uSpecular");
+        loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
+        loc_uConstantAttenuation = glGetUniformLocation(shaderProgram, "uConstantAttenuation");
+        loc_uLinearAttenuation = glGetUniformLocation(shaderProgram, "uLinearAttenuation");
+        loc_uQuadraticAttenuation = glGetUniformLocation(shaderProgram, "uQuadraticAttenuation");
 
         camera = new Camera()
                 .withPosition(new Vec3D(10.f, 10f, 5f))
@@ -67,24 +95,39 @@ public class Renderer extends AbstractRenderer {
     @Override
     public void display() {
         glEnable(GL_DEPTH_TEST);
-
         glViewport(0, 0, width, height);
 
         changePolygonMode();
 
-        // Display shader by typeShader
-        if (typeShader == 0) {
-            shaderDisplayMain();
-        } else if (typeShader == 1) {
-            shaderDisplayLight();
-        }
-
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
-        grid.getBuffers().draw(topology[indexTopology], shaderProgram);
 
-        String text = "Change grid [G] " + typeGrid + "; ";
-        text += "Topology [T] " + textTopology[indexTopology] + "; ";
-        text += "Polygon mode [M] " + textPolygonMode[modePolygon] + "; ";
+        glUniformMatrix4fv(loc_uModel, false, model.floatArray());
+        glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
+        glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
+
+        glUniform1i(loc_uModeGrid, modeGrid);
+        glUniform1i(loc_uModeColor, modeColor);
+        glUniform1i(loc_uModeLight, modeLight);
+
+        glUniform1f(loc_uTime, (float) glfwGetTime());
+
+        glUniform3f(loc_uLightSource, (float) camera.getPosition().getX(), (float) camera.getPosition().getY(), (float) camera.getPosition().getZ());
+        glUniform4f(loc_uAmbient, 0.12f, 0.12f, 0.12f, 1f);
+        glUniform4f(loc_uDiffuse, 1.52f, 1.52f, 1.52f, 1f);
+        glUniform4f(loc_uSpecular, 2f, 2f, 2f, 1f);
+        glUniform1f(loc_uSpecularPower, 5f);
+        glUniform1f(loc_uConstantAttenuation, 0.5f);
+        glUniform1f(loc_uLinearAttenuation, 0.2f);
+        glUniform1f(loc_uQuadraticAttenuation, 0.05f);
+
+        texture.bind(shaderProgram, "uTextureID", 0);
+
+        grid.getBuffers().draw(topology[modeTopology], shaderProgram);
+
+        String text = "Change grid [G] " + modeGrid + "; ";
+        text += "Topology mode [T] " + textTopology[modeTopology] + "; ";
+        text += "Polygon mode [M] " + textPolygon[modePolygon] + "; ";
         text += "Number of vertex [+, -] " + m + "; ";
 
         textRenderer.addStr2D(10, 30, text);
@@ -94,6 +137,13 @@ public class Renderer extends AbstractRenderer {
         text += "Scale [1,2]; ";
 
         textRenderer.addStr2D(10, 50, text);
+
+        text = "Color mode [C] " + textColor[modeColor] + "; ";
+        if (modeColor == 6 || modeColor == 7) {
+            text += "Lighting mode [V] " + textLight[modeLight] + "; ";
+        }
+
+        textRenderer.addStr2D(10, 70, text);
     }
 
     private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
@@ -190,26 +240,25 @@ public class Renderer extends AbstractRenderer {
                         break;
                     // Change polygon mode
                     case GLFW_KEY_T:
-                        indexTopology = (++indexTopology) % 2;
+                        modeTopology = (++modeTopology) % 2;
                         renderGrid();
-                        break;
-                    // Change shader
-                    case GLFW_KEY_H:
-                        typeShader = (++typeShader) % 2;
-                        initShader();
                         break;
                     // Change grid
                     case GLFW_KEY_G:
-                        typeGrid = (++typeGrid) % 7;
+                        modeGrid = (++modeGrid) % 7;
                         break;
-                    // Change projection (Persp/Ortho)
+                    // Change projection
                     case GLFW_KEY_P:
-                        typeProjection = (++typeProjection) % 2;
+                        modeProjection = (++modeProjection) % 2;
                         initProjection();
                         break;
-                    // Change color (Position/Texture)
+                    // Change color
                     case GLFW_KEY_C:
-                        typeColor = (++typeColor) % 2;
+                        modeColor = (++modeColor) % 9;
+                        break;
+                    // Change lighting
+                    case GLFW_KEY_V:
+                        modeLight = (++modeLight) % 4;
                         break;
                     // Change number of rendered triangles
                     case GLFW_KEY_KP_ADD:
@@ -295,17 +344,16 @@ public class Renderer extends AbstractRenderer {
     }
 
     public void renderGrid() {
-        grid = new Grid(m, m, topology[indexTopology]);
+        grid = new Grid(m, m, topology[modeTopology]);
     }
 
     public void setModelMat() {
-        transMat = new Mat4Transl(x, y, z);
+        Mat4 transMat = new Mat4Transl(x, y, z);
+        Mat4 scaleMat = new Mat4Scale(scale);
 
-        scaleMat = new Mat4Scale(scale);
-
-        rotXMat = new Mat4RotX(rotX);
-        rotYMat = new Mat4RotY(rotY);
-        rotZMat = new Mat4RotZ(rotZ);
+        Mat4 rotXMat = new Mat4RotX(rotX);
+        Mat4 rotYMat = new Mat4RotY(rotY);
+        Mat4 rotZMat = new Mat4RotZ(rotZ);
 
         model = model.mul(transMat).mul(scaleMat).mul(rotXMat).mul(rotYMat).mul(rotZMat);
 
@@ -323,87 +371,10 @@ public class Renderer extends AbstractRenderer {
     }
 
     public void initProjection() {
-        if (typeProjection == 0) {
+        if (modeProjection == 0) {
             projection = new Mat4PerspRH(Math.PI / 3, 600 / (float) 800, 0.1f, 50.f);
         } else {
             projection = new Mat4OrthoRH((double) width / 90, (double) height / 90, 0.1f, 50.f);
         }
-    }
-
-    // Init shader by typeShader
-    public void initShader() {
-        if (typeShader == 0) {
-            try {
-                shaderMain();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else if (typeShader == 1) {
-            shaderLight();
-        }
-    }
-
-    // Init shader Light/Main
-    public void shaderLight() {
-        shaderProgram = ShaderUtils.loadProgram("/shaders/Light/Main");
-
-        loc_uModel = glGetUniformLocation(shaderProgram, "uModel");
-        loc_uView = glGetUniformLocation(shaderProgram, "uView");
-        loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
-
-        loc_uLightSource = glGetUniformLocation(shaderProgram, "uLightSource");
-
-        loc_uAmbient = glGetUniformLocation(shaderProgram, "uAmbient");
-        loc_uDiffuse = glGetUniformLocation(shaderProgram, "uDiffuse");
-        loc_uSpecular = glGetUniformLocation(shaderProgram, "uSpecular");
-        loc_uSpecularPower = glGetUniformLocation(shaderProgram, "uSpecularPower");
-        loc_uConstantAttenuation = glGetUniformLocation(shaderProgram, "uConstantAttenuation");
-        loc_uLinearAttenuation = glGetUniformLocation(shaderProgram, "uLinearAttenuation");
-        loc_uQuadraticAttenuation = glGetUniformLocation(shaderProgram, "uQuadraticAttenuation");
-    }
-
-    // Display shader Light/Main
-    public void shaderDisplayLight() {
-        glUniformMatrix4fv(loc_uModel, false, model.floatArray());
-        glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
-        glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
-
-        glUniform3f(loc_uLightSource, -10f, -10f, -3f);
-        glUniform4f(loc_uAmbient, ambientStrength, ambientStrength, ambientStrength, ambientStrength);
-        glUniform4f(loc_uDiffuse, diffuseStrength, diffuseStrength, diffuseStrength, diffuseStrength);
-        glUniform4f(loc_uSpecular, specularStrength, specularStrength, specularStrength, specularStrength);
-        glUniform1f(loc_uSpecularPower, 10f);
-        glUniform1f(loc_uConstantAttenuation, 0.01f);
-        glUniform1f(loc_uLinearAttenuation, 0.01f);
-        glUniform1f(loc_uQuadraticAttenuation, 0.01f);
-    }
-
-    // Init shader Main/Main
-    public void shaderMain() throws IOException {
-        shaderProgram = ShaderUtils.loadProgram("/shaders/Main/Main");
-
-        texture = new OGLTexture2D("textures/bricks.jpg");
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-
-        loc_uModel = glGetUniformLocation(shaderProgram, "uModel");
-        loc_uView = glGetUniformLocation(shaderProgram, "uView");
-        loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
-
-        loc_uTypeGrid = glGetUniformLocation(shaderProgram, "uTypeGrid");
-        loc_uTime = glGetUniformLocation(shaderProgram, "uTime");
-
-        loc_uTypeColor = glGetUniformLocation(shaderProgram, "uTypeColor");
-        texture.bind(shaderProgram, "uTextureID", 0);
-    }
-
-    // Display shader Main/Main
-    public void shaderDisplayMain() {
-        glUniformMatrix4fv(loc_uModel, false, model.floatArray());
-        glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
-        glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
-        glUniform1i(loc_uTypeGrid, typeGrid);
-        glUniform1f(loc_uTime, (float) glfwGetTime());
-
-        glUniform1i(loc_uTypeColor, typeColor);
     }
 }
