@@ -7,15 +7,19 @@ in vec3 normal;
 in vec3 lightDirection;
 in vec3 viewDirection;
 in float dist;
+in vec3 viewVec;
+in vec3 lightVec;
 
 out vec4 outColor;
 
 // Texture
 uniform sampler2D uTextureId;
+uniform sampler2D uTextureNormal;
 
 // Mode
 uniform int uModeColor;
 uniform int uModeLight;
+uniform int uModeSpot;
 
 // Light
 uniform vec4 uAmbient;
@@ -23,6 +27,9 @@ uniform vec4 uDiffuse;
 uniform vec4 uSpecular;
 uniform float uSpecularPower;
 uniform float uConstantAttenuation, uLinearAttenuatuin, uQuadraticAttenuation;
+
+uniform float uSpotCutOff;
+uniform vec3 uSpotDirection;
 
 float near = 0.1;
 float far  = 100.0;
@@ -51,11 +58,11 @@ void main() {
         // Depth
         float depth = linearizeDepth(gl_FragCoord.z) / far;
         outColor.rgb = vec3(depth);
-    } else if (uModeColor == 5 || uModeColor == 6 || uModeColor == 7) {
+    } else if (uModeColor == 5 || uModeColor == 6 || uModeColor == 7 || uModeColor == 9) {
         vec4 baseColor;
 
         // Texture
-        if (uModeColor == 5 || uModeColor == 7){
+        if (uModeColor == 5 || uModeColor == 7 || uModeColor == 9){
             vec2 coord = mod(texCoord * vec2(2f, 4f), vec2(1f, 1f));
 
             baseColor = texture(uTextureId, coord);
@@ -68,7 +75,7 @@ void main() {
         vec4 lighting;
 
         // Lighting
-        if (uModeColor == 6 || uModeColor == 7) {
+        if (uModeColor == 6 || uModeColor == 7 || uModeColor == 9) {
             if (uModeColor == 6){
                 baseColor = vec4(color, 1);
             }
@@ -91,17 +98,12 @@ void main() {
 
             float att = 1.0 / (uConstantAttenuation + uLinearAttenuatuin * dist + uQuadraticAttenuation * dist * dist);
 
-            if (uModeColor == 6) {
-                if (uModeLight == 0) {
-                    outColor = totalAmbient;
-                } else if (uModeLight == 1) {
-                    outColor = totalAmbient + totalDiffuse;
-                } else if (uModeLight == 2) {
-                    outColor = totalAmbient + totalDiffuse + totalSpecular;
-                } else if (uModeLight == 3) {
-                    outColor = totalAmbient + att * (totalDiffuse + totalSpecular);
-                }
-            } else if (uModeColor == 7){
+            float spotEffect = max(dot(normalize(uSpotDirection), normalize(-ld)), 0);
+
+            float blend = clamp((spotEffect - uSpotCutOff) / (1 - uSpotCutOff), 0f, 1f);
+
+            if (uModeSpot == 0 && uModeColor != 9){
+                // Light
                 if (uModeLight == 0) {
                     lighting = totalAmbient;
                 } else if (uModeLight == 1) {
@@ -111,14 +113,45 @@ void main() {
                 } else if (uModeLight == 3) {
                     lighting = totalAmbient + att * (totalDiffuse + totalSpecular);
                 }
-            }
-        }
+            } else if (uModeSpot == 1 && spotEffect > uSpotCutOff && uModeColor != 9) {
+                // Spot light
+                if (uModeLight == 0) {
+                    lighting = mix(totalAmbient, totalAmbient, blend);
+                } else if (uModeLight == 1) {
+                    lighting = mix(totalAmbient, totalAmbient + totalDiffuse, blend);
+                } else if (uModeLight == 2) {
+                    lighting = mix(totalAmbient, totalAmbient + totalDiffuse + totalSpecular, blend);
+                } else if (uModeLight == 3) {
+                    lighting = mix(totalAmbient, totalAmbient + att * (totalDiffuse + totalSpecular), blend);
+                }
+            } else if (uModeColor == 9) {
+                // Normal mapping texture
+                vec2 coord = mod(texCoord * vec2(2f, 4f), vec2(1f, 1f));
 
-        if (uModeColor == 7) {
-            outColor = vec4(lighting.xyz * baseColor.rgb, 1);
+                vec3 bump = texture(uTextureNormal, coord.xy).rgb * 2 - 1;
+
+                float NdotL = max(dot(bump, lightVec), 0);
+                vec4 diffuse = NdotL * totalDiffuse;
+
+                float NdotHV = max(0, dot(bump, normalize(lightVec + viewVec)));
+                vec4 specular = totalSpecular * pow(NdotHV, 10);
+
+                lighting = diffuse + totalAmbient + specular;
+            } else {
+                lighting = totalAmbient;
+            }
+
+
+        }
+        if (uModeColor == 6) {
+            outColor = lighting;
+        } else if (uModeColor == 7 || uModeColor == 9) {
+            outColor.rgb = lighting.xyz * baseColor.rgb;
         }
     } else if (uModeColor == 8) {
         // Distance from light
-        outColor.rgb = vec3(dist);
+        outColor.rgb = vec3(dist / 20);
     }
+
+    outColor.a = 1;
 }

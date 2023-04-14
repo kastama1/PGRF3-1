@@ -7,6 +7,8 @@ out vec3 normal;
 out vec3 lightDirection;
 out vec3 viewDirection;
 out float dist;
+out vec3 viewVec;
+out vec3 lightVec;
 
 // Model, view, projection
 uniform mat4 uModel;
@@ -14,7 +16,7 @@ uniform mat4 uView;
 uniform mat4 uProj;
 
 // Mode
-uniform int uModeGrid;
+uniform int uModeObject;
 uniform int uModeProjection;
 uniform int uModeColor;
 
@@ -167,32 +169,32 @@ void main() {
     vec3 nor;
 
 
-    if (uModeGrid == 0){
+    if (uModeObject == 0){
         // Cartesian 1
         // Object transform in time
         newPos = getCartesianObject1(position);
         nor = normalize(getCartesianObject1Normal(position));
-    } else if (uModeGrid == 1){
+    } else if (uModeObject == 1){
         // Cartesian 2
         newPos = getCartesianObject2(position);
         nor = normalize(getCartesianObject2Normal(position));
-    } else if (uModeGrid == 2){
+    } else if (uModeObject == 2){
         // Cartesian 3
         newPos = getCartesianObject3(position);
         nor = normalize(getCartesianObject3Normal(position));
-    } else if (uModeGrid == 3){
+    } else if (uModeObject == 3){
         // Sphere 1
         newPos = getSphereObject1(position);
         nor = normalize(getSphereObject1Normal(position));
-    } else if (uModeGrid == 4){
+    } else if (uModeObject == 4){
         // Sphere 2
         newPos = getSphereObject2(position);
         nor = normalize(getSphereObject2Normal(position));
-    } else if (uModeGrid == 5){
+    } else if (uModeObject == 5){
         // Cylinder1
         newPos = getCylinderObject1(position);
         nor = normalize(getCylinderObject1Normal(position));
-    } else if (uModeGrid == 6){
+    } else if (uModeObject == 6){
         // Cylinder2
         newPos = getCylinderObject2(position);
         nor = normalize(getCylinderObject2Normal(position));
@@ -201,46 +203,47 @@ void main() {
     if (uModeColor == 0) {
         color = vec3(0.5, 0.5, 0.5);
     } else if (uModeColor == 1) {
-        color = newPos;
+        color = inverse(transpose(mat3(uView * uModel))) * newPos;
     } else if (uModeColor == 2) {
-        color = nor;
+        color = inverse(transpose(mat3(uView * uModel))) * nor;
     } else if (uModeColor == 3) {
         texCoord = vec2(inPosition.xy);
     } else if (uModeColor == 5) {
         texCoord = vec2(inPosition.xy);
-    } else if (uModeColor == 6) {
+    } else if (uModeColor == 6 || uModeColor == 7 || uModeColor == 8 || uModeColor == 9) {
         vec4 objectPosition = uView * uModel * vec4(newPos, 1f);
 
         normal = inverse(transpose(mat3(uView * uModel))) * nor;
 
-        vec4 lightPosition = vec4(uLightSource, 1f);
+        vec4 lightPosition = uView * uModel * vec4(uLightSource, 1f);
 
-        lightDirection = lightPosition.xyz - objectPosition.xyz;
+        lightDirection = normalize(lightPosition.xyz - objectPosition.xyz);
 
-        viewDirection = objectPosition.xyz;
-
-        dist = length(lightDirection);
-
-        color = vec3(0.5, 0.5, 0.5);
-    } else if (uModeColor == 7) {
-        texCoord = vec2(inPosition.xy);
-
-        vec4 objectPosition = uView * uModel * vec4(newPos, 1f);
-
-        normal = inverse(transpose(mat3(uView * uModel))) * nor;
-
-        vec4 lightPosition = vec4(uLightSource, 1.0);
-
-        lightDirection = lightPosition.xyz - objectPosition.xyz;
-
-        viewDirection = objectPosition.xyz;
+        viewDirection = - normalize(objectPosition.xyz);
 
         dist = length(lightDirection);
-    } else if (uModeColor == 8) {
-        vec4 objectPosition = uView * uModel * vec4(newPos, 1f);
-        vec4 lightPosition = vec4(uLightSource, 1.0);
-        lightDirection = lightPosition.xyz - objectPosition.xyz;
-        dist = length(lightDirection);
+
+        if (uModeColor == 6 || uModeColor == 8) {
+            color = vec3(0.5, 0.5, 0.5);
+        } else if (uModeColor == 7){
+            texCoord = vec2(inPosition.xy);
+        } else if (uModeColor == 9) {
+            vec3 vNormal, vTangent, vBinormal, tangent;
+
+            vBinormal = cross(normalize(vNormal), normalize(vTangent));
+            tangent = cross(vBinormal, vNormal);
+
+            vNormal = normal * nor;
+            vTangent = mat3(uModel * uView) * tangent;
+
+            vBinormal = cross(normalize(vNormal), normalize(vTangent));
+            vTangent = cross(vBinormal, vNormal);
+
+            mat3 TBN = mat3(vTangent, vBinormal, vNormal);
+
+            viewVec = viewDirection * TBN;
+            lightVec = lightDirection * TBN;
+        }
     }
 
     gl_Position = uProj * uView * uModel * vec4(newPos, 1f);

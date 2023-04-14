@@ -24,22 +24,25 @@ public class Renderer extends AbstractRenderer {
     private Mat4 projection;
     private Mat4 model;
     private int shaderProgram, loc_uModel, loc_uView, loc_uProj;
-    private int loc_uModeGrid, loc_uModeColor, loc_uTime;
+    private int loc_uModeObject, loc_uModeColor, loc_uModeLight, loc_uModeSpot, loc_uTime;
     private int loc_uLightSource, loc_uAmbient, loc_uDiffuse, loc_uSpecular, loc_uSpecularPower;
     private int loc_uConstantAttenuation, loc_uLinearAttenuation, loc_uQuadraticAttenuation;
-    private int loc_uModeLight;
+    private int loc_uSpotCutOff, loc_uSpotDirection;
     private Grid grid;
-    private int modePolygon = 0, modeTopology = 0, modeGrid = 0, modeProjection = 0, modeColor = 0;
-    private int modeLight = 0;
-    private OGLTexture2D texture;
+    private int modePolygon = 0, modeTopology = 0, modeObject = 0, modeProjection = 0, modeColor = 0;
+    private int modeLight = 0, modeMovement = 0;
+    private boolean modeSpot = false;
     private final int[] polygonModes = {GL_FILL, GL_LINE, GL_POINT};
     private final int[] topology = {GL_TRIANGLES, GL_TRIANGLE_STRIP};
     private int m = 50;
     private double scale = 1, x = 0, y = 0, z = 0, rotX = 0, rotY = 0, rotZ = 0;
+    private float spotCutOff = 0.8f;
     private final String[] textTopology = {"GL_TRIANGLES", "GL_TRIANGLE_STRIP"};
+    private final String[] textMovement = {"Camera", "Object", "Rotation"};
     private final String[] textPolygon = {"GL_FILL", "GL_LINE", "GL_POINT"};
-    private final String[] textColor = {"Color", "Position X, Y, Z", "Normal", "Texture coord U, V", "Depth", "Texture", "Lightning", "Texture and Lightning", "Distance from light"};
+    private final String[] textColor = {"Color", "Position X, Y, Z", "Normal", "Texture coord U, V", "Depth", "Texture", "Lightning", "Texture and Lightning", "Distance from light", "Normal mapping texture"};
     private final String[] textLight = {"Ambient", "Ambient + Diffuse", "Ambient + Diffuse + Specular", "Ambient + Diffuse + Specular + Attenuation"};
+    private OGLTexture2D texture, textureNormal;
 
     public Renderer(int width, int height) {
         super(width, height);
@@ -54,12 +57,14 @@ public class Renderer extends AbstractRenderer {
         loc_uProj = glGetUniformLocation(shaderProgram, "uProj");
 
         texture = new OGLTexture2D("textures/bricks.jpg");
+        textureNormal = new OGLTexture2D("textures/bricksn.png");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-        loc_uModeGrid = glGetUniformLocation(shaderProgram, "uModeGrid");
+        loc_uModeObject = glGetUniformLocation(shaderProgram, "uModeObject");
         loc_uModeColor = glGetUniformLocation(shaderProgram, "uModeColor");
         loc_uModeLight = glGetUniformLocation(shaderProgram, "uModeLight");
+        loc_uModeSpot = glGetUniformLocation(shaderProgram, "uModeSpot");
 
         loc_uTime = glGetUniformLocation(shaderProgram, "uTime");
 
@@ -72,6 +77,9 @@ public class Renderer extends AbstractRenderer {
         loc_uConstantAttenuation = glGetUniformLocation(shaderProgram, "uConstantAttenuation");
         loc_uLinearAttenuation = glGetUniformLocation(shaderProgram, "uLinearAttenuation");
         loc_uQuadraticAttenuation = glGetUniformLocation(shaderProgram, "uQuadraticAttenuation");
+
+        loc_uSpotCutOff = glGetUniformLocation(shaderProgram, "uSpotCutOff");
+        loc_uSpotDirection = glGetUniformLocation(shaderProgram, "uSpotDirection");
 
         camera = new Camera()
                 .withPosition(new Vec3D(10.f, 10f, 5f))
@@ -106,14 +114,15 @@ public class Renderer extends AbstractRenderer {
         glUniformMatrix4fv(loc_uView, false, camera.getViewMatrix().floatArray());
         glUniformMatrix4fv(loc_uProj, false, projection.floatArray());
 
-        glUniform1i(loc_uModeGrid, modeGrid);
+        glUniform1i(loc_uModeObject, modeObject);
         glUniform1i(loc_uModeColor, modeColor);
         glUniform1i(loc_uModeLight, modeLight);
+        glUniform1i(loc_uModeSpot, modeSpot ? 1 : 0);
 
         glUniform1f(loc_uTime, (float) glfwGetTime());
 
-        glUniform3f(loc_uLightSource, (float) camera.getPosition().getX(), (float) camera.getPosition().getY(), (float) camera.getPosition().getZ());
-        glUniform4f(loc_uAmbient, 0.12f, 0.12f, 0.12f, 1f);
+        glUniform3f(loc_uLightSource, (float) camera.getEye().getX(), (float) camera.getEye().getY(), (float) camera.getEye().getZ());
+        glUniform4f(loc_uAmbient, 0.3f, 0.3f, 0.3f, 1f);
         glUniform4f(loc_uDiffuse, 1.52f, 1.52f, 1.52f, 1f);
         glUniform4f(loc_uSpecular, 2f, 2f, 2f, 1f);
         glUniform1f(loc_uSpecularPower, 5f);
@@ -121,26 +130,41 @@ public class Renderer extends AbstractRenderer {
         glUniform1f(loc_uLinearAttenuation, 0.2f);
         glUniform1f(loc_uQuadraticAttenuation, 0.05f);
 
+        glUniform1f(loc_uSpotCutOff, spotCutOff);
+        glUniform3f(loc_uSpotDirection, (float) camera.getEye().mul(-1).getX(), (float) camera.getEye().mul(-1).getY(), (float) camera.getEye().mul(-1).getZ());
+
         texture.bind(shaderProgram, "uTextureID", 0);
+        textureNormal.bind(shaderProgram, "uTextureNormal", 1);
 
         grid.getBuffers().draw(topology[modeTopology], shaderProgram);
 
-        String text = "Change grid [G] " + modeGrid + "; ";
+        String text = "Change object [O] " + modeObject + "; ";
+        text += "Movement mode [M] " + modeObject + "; ";
         text += "Topology mode [T] " + textTopology[modeTopology] + "; ";
-        text += "Polygon mode [M] " + textPolygon[modePolygon] + "; ";
+        text += "Polygon mode [P] " + textPolygon[modePolygon] + "; ";
         text += "Number of vertex [+, -] " + m + "; ";
 
         textRenderer.addStr2D(10, 30, text);
 
-        text = "Object movement [I,K,J,L]; ";
-        text += "Rotation X [4,7]; Rotation Y [5,8]; Rotation Z [69]; ";
-        text += "Scale [1,2]; ";
+        if (modeMovement == 0) {
+            text = "Camera movement [WSAD]; Up/Down [QE]; ";
+        } else if (modeMovement == 1) {
+            text = "Object movement [WSAD]; Up/Down [QE]; ";
+        } else if (modeMovement == 2) {
+            text = "Object rotation X [WS]; Object rotation Y [AD]; Object rotation Z [QE] ";
+        }
 
         textRenderer.addStr2D(10, 50, text);
 
+        text = "Object scale [1,2]; ";
+
+        textRenderer.addStr2D(10, 70, text);
+
         text = "Color mode [C] " + textColor[modeColor] + "; ";
         if (modeColor == 6 || modeColor == 7) {
-            text += "Lighting mode [V] " + textLight[modeLight] + "; ";
+            text += "Lighting mode [L] " + textLight[modeLight] + "; ";
+            text += "Flash light [F] " + modeSpot + "; ";
+            text += "Spot cut off [Up, Down] " + spotCutOff + "; ";
         }
 
         textRenderer.addStr2D(10, 70, text);
@@ -155,49 +179,98 @@ public class Renderer extends AbstractRenderer {
             if (action == GLFW_PRESS || action == GLFW_REPEAT) {
                 switch (key) {
                     // Movement
+                    // modeMovement = 0 -> camera movement
+                    // modeMovement = 1 -> object movement
+                    // modeMovement = 2 -> object rotation
                     case GLFW_KEY_W:
-                        camera = camera.forward(0.5);
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.forward(0.5);
+                                break;
+                            case 1:
+                                y = 0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotX = 0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
                     case GLFW_KEY_S:
-                        camera = camera.backward(0.5);
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.backward(0.5);
+                                break;
+                            case 1:
+                                y = -0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotX = -0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
                     case GLFW_KEY_A:
-                        camera = camera.left(0.5);
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.left(0.5);
+                                break;
+                            case 1:
+                                x = 0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotY = 0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
                     case GLFW_KEY_D:
-                        camera = camera.right(0.5);
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.right(0.5);
+                                break;
+                            case 1:
+                                x = -0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotY = -0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
-                    case GLFW_KEY_SPACE:
-                        camera = camera.up(0.5);
+                    case GLFW_KEY_Q:
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.up(0.5);
+                                break;
+                            case 1:
+                                z = 0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotZ = 0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
-                    case GLFW_KEY_LEFT_CONTROL:
-                        camera = camera.down(0.5);
-                        break;
-                    // Transformation of object
-                    // Movement of object
-                    case GLFW_KEY_J:
-                        x = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_L:
-                        x = -0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_I:
-                        y = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_K:
-                        y = -0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_U:
-                        z = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_O:
-                        z = -0.1;
-                        setModelMat();
+                    case GLFW_KEY_E:
+                        switch (modeMovement) {
+                            case 0:
+                                camera = camera.down(0.5);
+                                break;
+                            case 1:
+                                z = -0.1;
+                                setModelMat();
+                                break;
+                            case 2:
+                                rotZ = -0.1;
+                                setModelMat();
+                                break;
+                        }
                         break;
                     // Scale of object
                     case GLFW_KEY_KP_1:
@@ -208,57 +281,35 @@ public class Renderer extends AbstractRenderer {
                         scale = 0.9;
                         setModelMat();
                         break;
-                    // Rotation of object
-                    case GLFW_KEY_KP_4:
-                        rotX = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_KP_7:
-                        rotX = -0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_KP_5:
-                        rotY = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_KP_8:
-                        rotY = -0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_KP_6:
-                        rotZ = 0.1;
-                        setModelMat();
-                        break;
-                    case GLFW_KEY_KP_9:
-                        rotZ = -0.1;
-                        setModelMat();
-                        break;
                     // Change polygon mode
-                    case GLFW_KEY_M:
+                    case GLFW_KEY_P:
                         modePolygon = (++modePolygon) % 3;
                         changePolygonMode();
                         break;
-                    // Change polygon mode
+                    // Change movement mode
+                    case GLFW_KEY_M:
+                        modeMovement = (++modeMovement) % 3;
+                        break;
+                    // Change topology mode
                     case GLFW_KEY_T:
                         modeTopology = (++modeTopology) % 2;
                         renderGrid();
                         break;
-                    // Change grid
-                    case GLFW_KEY_G:
-                        modeGrid = (++modeGrid) % 7;
-                        break;
-                    // Change projection
-                    case GLFW_KEY_P:
-                        modeProjection = (++modeProjection) % 2;
-                        initProjection();
+                    // Change object
+                    case GLFW_KEY_O:
+                        modeObject = (++modeObject) % 7;
                         break;
                     // Change color
                     case GLFW_KEY_C:
-                        modeColor = (++modeColor) % 9;
+                        modeColor = (++modeColor) % 10;
                         break;
                     // Change lighting
-                    case GLFW_KEY_V:
+                    case GLFW_KEY_L:
                         modeLight = (++modeLight) % 4;
+                        break;
+                    // Change spot
+                    case GLFW_KEY_F:
+                        modeSpot = !modeSpot;
                         break;
                     // Change number of rendered triangles
                     case GLFW_KEY_KP_ADD:
@@ -270,6 +321,12 @@ public class Renderer extends AbstractRenderer {
                             m -= 10;
                             renderGrid();
                         }
+                        break;
+                    case GLFW_KEY_UP:
+                        spotCutOff += 0.01f;
+                        break;
+                    case GLFW_KEY_DOWN:
+                        spotCutOff -= 0.01f;
                         break;
                 }
             }
