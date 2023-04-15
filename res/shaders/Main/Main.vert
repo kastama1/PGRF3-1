@@ -7,13 +7,12 @@ out vec3 normal;
 out vec3 lightDirection;
 out vec3 viewDirection;
 out float dist;
-out vec3 viewVec;
-out vec3 lightVec;
 
 // Model, view, projection
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProj;
+uniform mat4 uModelLight;
 
 // Mode
 uniform int uModeObject;
@@ -27,36 +26,23 @@ uniform float uTime;
 uniform vec3 uLightSource;
 
 const float PI = 3.1416;
+const float delta = 0.001;
 
 vec3 getCartesianObject1(vec2 position) {
     float x = position.x;
     float y = position.y;
     float offset = uTime;
-    float z = 0.2 * sin(5.0 * position.x + offset);
+    float z = 0.f;
 
     return vec3(x, y, z);
-}
-
-vec3 getCartesianObject1Normal(vec2 position) {
-    vec3 u = getCartesianObject1(position + vec2(0.001, 0)) - getCartesianObject1(position - vec2(0.001, 0));
-    vec3 v = getCartesianObject1(position + vec2(0, 0.001)) - getCartesianObject1(position - vec2(0, 0.001));
-
-    return cross(u, v);
 }
 
 vec3 getCartesianObject2(vec2 position) {
     float x = position.x;
     float y = position.y;
-    float z = 2 + position.x/4 + position.y/2;
+    float z = 2.f + position.x / 4.f + position.y / 2.f;
 
     return vec3(x, y, z);
-}
-
-vec3 getCartesianObject2Normal(vec2 position) {
-    vec3 u = getCartesianObject2(position + vec2(0.001, 0)) - getCartesianObject2(position - vec2(0.001, 0));
-    vec3 v = getCartesianObject2(position + vec2(0, 0.001)) - getCartesianObject2(position - vec2(0, 0.001));
-
-    return cross(u, v);
 }
 
 vec3 getCartesianObject3(vec2 position) {
@@ -67,184 +53,122 @@ vec3 getCartesianObject3(vec2 position) {
     return vec3(x, y, z);
 }
 
-vec3 getCartesianObject3Normal(vec2 position) {
-    vec3 u = getCartesianObject3(position + vec2(0.001, 0)) - getCartesianObject3(position - vec2(0.001, 0));
-    vec3 v = getCartesianObject3(position + vec2(0, 0.001)) - getCartesianObject3(position - vec2(0, 0.001));
-
-    return cross(u, v);
-}
-
-vec2 getSphere(vec2 position){
-    float azimut = position.x * PI;
-    float zenit = position.y * PI / 2;
-
-    return vec2(azimut, zenit);
-}
-
 vec3 getSphereObject1(vec2 position) {
-    vec2 sphere = getSphere(position);
+    float azimut = position.y * 2.f * PI;
+    float zenit = position.x * PI;
 
-    float r = 3 * cos(4 * sphere.y);
+    float r = 1.f;
 
-    float x = r * cos(sphere.x) * cos(sphere.y);
-    float y = r * sin(sphere.x) * cos(sphere.y);
-    float z = r * sin(sphere.y);
+    float x = r * sin(zenit) * cos(azimut);
+    float y = 2 * r * sin(zenit) * sin(azimut);
+    float z = 1 * r * cos(zenit);
 
     return vec3(x, y, z);
-}
-
-vec3 getSphereObject1Normal(vec2 position) {
-    vec3 u = getSphereObject1(position + vec2(0.001, 0)) - getSphereObject1(position - vec2(0.001, 0));
-    vec3 v = getSphereObject1(position + vec2(0, 0.001)) - getSphereObject1(position - vec2(0, 0.001));
-
-    return cross(u, v);
 }
 
 vec3 getSphereObject2(vec2 position) {
-    vec2 sphere = getSphere(position);
+    float azimut = position.y * 2.f * PI;
+    float zenit = position.x * PI;
 
-    float r = 2 + sin(5 * sphere.x + 7 * sphere.y);
+    float r = 2.f + sin(5.f * azimut + 7.f * zenit);
 
-    float x = r * cos(sphere.x) * cos(sphere.y);
-    float y = r * sin(sphere.x) * cos(sphere.y);
-    float z = r * sin(sphere.y);
+    float x = r * sin(zenit) * cos(azimut);
+    float y = r * sin(zenit) * sin(azimut);
+    float z = r * cos(zenit);
 
     return vec3(x, y, z);
-}
-
-vec3 getSphereObject2Normal(vec2 position) {
-    vec3 u = getSphereObject2(position + vec2(0.001, 0)) - getSphereObject2(position - vec2(0.001, 0));
-    vec3 v = getSphereObject2(position + vec2(0, 0.001)) - getSphereObject2(position - vec2(0, 0.001));
-
-    return cross(u, v);
-}
-
-vec2 getCylinder(vec2 position){
-    float azimut = position.x * PI;
-    float zenit = position.y * PI;
-
-    return vec2(azimut, zenit);
 }
 
 vec3 getCylinderObject1(vec2 position) {
-    vec2 cylinder = getCylinder(position);
+    float azimut = position.y * 2.f * PI;
+    float zenit = position.x * 2.f * PI;
 
-    float a = 3;
-    float b = 1;
+    float r = 2.f + cos(azimut);
 
-    float x = cos(cylinder.x) * (a + b * cos(cylinder.y));
-    float y = sin(cylinder.x) * (a + b * cos(cylinder.y));
-    float z = b * sin(cylinder.y);
+    float x = r * cos(zenit);
+    float y = r * sin(zenit);
+    float z = sin(azimut);
 
     return vec3(x, y, z);
-}
-
-vec3 getCylinderObject1Normal(vec2 position) {
-    vec3 u = getCylinderObject1(position + vec2(0.001, 0)) - getCylinderObject1(position - vec2(0.001, 0));
-    vec3 v = getCylinderObject1(position + vec2(0, 0.001)) - getCylinderObject1(position - vec2(0, 0.001));
-
-    return cross(u, v);
 }
 
 vec3 getCylinderObject2(vec2 position) {
-    vec2 cylinder = getCylinder(position);
+    float azimut = position.y * 2.f * PI;
+    float zenit = position.x * 2.f * PI;
 
-    float x = cylinder.x;
-    float y = cylinder.y;
-    float z = pow(cylinder.x, 2) + pow(cylinder.y, 2);
+    float r = azimut;
+
+    float x = r * cos(zenit);
+    float y = r * sin(zenit);
+    float z = sin(azimut);
 
     return vec3(x, y, z);
 }
 
-vec3 getCylinderObject2Normal(vec2 position) {
-    vec3 u = getCylinderObject2(position + vec2(0.001, 0)) - getCylinderObject2(position - vec2(0.001, 0));
-    vec3 v = getCylinderObject2(position + vec2(0, 0.001)) - getCylinderObject2(position - vec2(0, 0.001));
+vec3 getObject(vec2 position){
+    switch (uModeObject){
+        case 0:
+        return getCartesianObject1(position);
+        case 1:
+        return getCartesianObject2(position);
+        case 2:
+        return getCartesianObject3(position);
+        case 3:
+        return getSphereObject1(position);
+        case 4:
+        return getSphereObject2(position);
+        case 5:
+        return getCylinderObject1(position);
+        case 6:
+        return getCylinderObject2(position);
+    }
+    return vec3(0, 0, 0);
+}
+
+vec3 getNormal(vec2 position){
+    vec3 u = getObject(vec2(position.x + delta, position.y)) - getObject(vec2(position.x - delta, position.y));
+    vec3 v = getObject(vec2(position.x, position.y + delta)) - getObject(vec2(position.x, position.y - delta));
 
     return cross(u, v);
 }
 
+vec3 getTangent(vec2 position){
+    vec3 du = getObject(vec2(position.x + delta, position.y)) - getObject(vec2(position.x - delta, position.y));
+    return vec3(0);
+}
+
 void main() {
-    vec2 position = inPosition * 2 - 1;
-    vec3 newPos;
-    vec3 nor;
+    vec3 newPos = getObject(inPosition);
+    vec3 nor = getNormal(inPosition);
 
-
-    if (uModeObject == 0){
-        // Cartesian 1
-        // Object transform in time
-        newPos = getCartesianObject1(position);
-        nor = normalize(getCartesianObject1Normal(position));
-    } else if (uModeObject == 1){
-        // Cartesian 2
-        newPos = getCartesianObject2(position);
-        nor = normalize(getCartesianObject2Normal(position));
-    } else if (uModeObject == 2){
-        // Cartesian 3
-        newPos = getCartesianObject3(position);
-        nor = normalize(getCartesianObject3Normal(position));
-    } else if (uModeObject == 3){
-        // Sphere 1
-        newPos = getSphereObject1(position);
-        nor = normalize(getSphereObject1Normal(position));
-    } else if (uModeObject == 4){
-        // Sphere 2
-        newPos = getSphereObject2(position);
-        nor = normalize(getSphereObject2Normal(position));
-    } else if (uModeObject == 5){
-        // Cylinder1
-        newPos = getCylinderObject1(position);
-        nor = normalize(getCylinderObject1Normal(position));
-    } else if (uModeObject == 6){
-        // Cylinder2
-        newPos = getCylinderObject2(position);
-        nor = normalize(getCylinderObject2Normal(position));
-    }
-
+    vec4 objectPosition = uView * uModel * vec4(newPos, 1.f);
     if (uModeColor == 0) {
         color = vec3(0.5, 0.5, 0.5);
     } else if (uModeColor == 1) {
-        color = inverse(transpose(mat3(uView * uModel))) * newPos;
+        color = vec3(newPos);
     } else if (uModeColor == 2) {
-        color = inverse(transpose(mat3(uView * uModel))) * nor;
+        color = inverse(transpose(mat3(uView))) * nor;
     } else if (uModeColor == 3) {
-        texCoord = vec2(inPosition.xy);
+        color = vec3(inPosition.xy, 0.f);
     } else if (uModeColor == 5) {
-        texCoord = vec2(inPosition.xy);
+        texCoord = inPosition.xy;
     } else if (uModeColor == 6 || uModeColor == 7 || uModeColor == 8 || uModeColor == 9) {
-        vec4 objectPosition = uView * uModel * vec4(newPos, 1f);
+        normal = transpose(inverse(mat3(uView * uModel))) * nor;
 
-        normal = inverse(transpose(mat3(uView * uModel))) * nor;
+        vec4 lightPosition = uView * uModelLight * vec4(uLightSource, 1.f);
 
-        vec4 lightPosition = uView * uModel * vec4(uLightSource, 1f);
+        lightDirection = lightPosition.xyz - objectPosition.xyz;
 
-        lightDirection = normalize(lightPosition.xyz - objectPosition.xyz);
-
-        viewDirection = - normalize(objectPosition.xyz);
+        viewDirection = -objectPosition.xyz;
 
         dist = length(lightDirection);
 
-        if (uModeColor == 6 || uModeColor == 8) {
+        if (uModeColor == 6) {
             color = vec3(0.5, 0.5, 0.5);
         } else if (uModeColor == 7){
             texCoord = vec2(inPosition.xy);
-        } else if (uModeColor == 9) {
-            vec3 vNormal, vTangent, vBinormal, tangent;
-
-            vBinormal = cross(normalize(vNormal), normalize(vTangent));
-            tangent = cross(vBinormal, vNormal);
-
-            vNormal = normal * nor;
-            vTangent = mat3(uModel * uView) * tangent;
-
-            vBinormal = cross(normalize(vNormal), normalize(vTangent));
-            vTangent = cross(vBinormal, vNormal);
-
-            mat3 TBN = mat3(vTangent, vBinormal, vNormal);
-
-            viewVec = viewDirection * TBN;
-            lightVec = lightDirection * TBN;
         }
     }
 
-    gl_Position = uProj * uView * uModel * vec4(newPos, 1f);
+    gl_Position = uProj * objectPosition;
 }

@@ -7,8 +7,6 @@ in vec3 normal;
 in vec3 lightDirection;
 in vec3 viewDirection;
 in float dist;
-in vec3 viewVec;
-in vec3 lightVec;
 
 out vec4 outColor;
 
@@ -22,9 +20,6 @@ uniform int uModeLight;
 uniform int uModeSpot;
 
 // Light
-uniform vec4 uAmbient;
-uniform vec4 uDiffuse;
-uniform vec4 uSpecular;
 uniform float uSpecularPower;
 uniform float uConstantAttenuation, uLinearAttenuatuin, uQuadraticAttenuation;
 
@@ -34,6 +29,10 @@ uniform vec3 uSpotDirection;
 float near = 0.1;
 float far  = 100.0;
 
+vec4 ambient = vec4(0.5, 0.5, 0.5, 1.f);
+vec4 diffuse = vec4(0.7, 0.7, 0.7, 1.f);
+vec4 specular = vec4(0.8, 0.8, 0.8, 1.f);
+
 float linearizeDepth(float depth)
 {
     float z = depth * 2.0 - 1.0;
@@ -41,7 +40,6 @@ float linearizeDepth(float depth)
 }
 
 void main() {
-
     if (uModeColor == 0){
         // Color
         outColor.rgb = color;
@@ -50,20 +48,21 @@ void main() {
         outColor.rgb = color;
     } else if (uModeColor == 2) {
         // Normal
-        outColor.rgb = color;
+        outColor.rgb = normalize(color);
     } else if (uModeColor == 3) {
         // U, V
-        outColor.rgb = vec3(texCoord, 0);
+        outColor.rgb = color;
     } else if (uModeColor == 4) {
         // Depth
         float depth = linearizeDepth(gl_FragCoord.z) / far;
         outColor.rgb = vec3(depth);
     } else if (uModeColor == 5 || uModeColor == 6 || uModeColor == 7 || uModeColor == 9) {
         vec4 baseColor;
+        vec2 coord;
 
         // Texture
         if (uModeColor == 5 || uModeColor == 7 || uModeColor == 9){
-            vec2 coord = mod(texCoord * vec2(2f, 4f), vec2(1f, 1f));
+            coord = mod(texCoord * vec2(2f, 4f), vec2(1f, 1f));
 
             baseColor = texture(uTextureId, coord);
 
@@ -73,7 +72,6 @@ void main() {
         }
 
         vec4 lighting;
-
         // Lighting
         if (uModeColor == 6 || uModeColor == 7 || uModeColor == 9) {
             if (uModeColor == 6){
@@ -92,9 +90,9 @@ void main() {
             vec3 halfVector = normalize(ld + vd);
             float NDotH = max(0.0, dot(nd, halfVector));
 
-            vec4 totalAmbient = uAmbient * baseColor;
-            vec4 totalDiffuse = uDiffuse * NDotL * baseColor;
-            vec4 totalSpecular = uSpecular * (pow(NDotH, uSpecularPower * 4.0));
+            vec4 totalAmbient = ambient * baseColor;
+            vec4 totalDiffuse = diffuse * NDotL * baseColor;
+            vec4 totalSpecular = specular * (pow(NDotH, uSpecularPower * 4.0));
 
             float att = 1.0 / (uConstantAttenuation + uLinearAttenuatuin * dist + uQuadraticAttenuation * dist * dist);
 
@@ -124,24 +122,9 @@ void main() {
                 } else if (uModeLight == 3) {
                     lighting = mix(totalAmbient, totalAmbient + att * (totalDiffuse + totalSpecular), blend);
                 }
-            } else if (uModeColor == 9) {
-                // Normal mapping texture
-                vec2 coord = mod(texCoord * vec2(2f, 4f), vec2(1f, 1f));
-
-                vec3 bump = texture(uTextureNormal, coord.xy).rgb * 2 - 1;
-
-                float NdotL = max(dot(bump, lightVec), 0);
-                vec4 diffuse = NdotL * totalDiffuse;
-
-                float NdotHV = max(0, dot(bump, normalize(lightVec + viewVec)));
-                vec4 specular = totalSpecular * pow(NdotHV, 10);
-
-                lighting = diffuse + totalAmbient + specular;
             } else {
                 lighting = totalAmbient;
             }
-
-
         }
         if (uModeColor == 6) {
             outColor = lighting;
