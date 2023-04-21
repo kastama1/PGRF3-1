@@ -72,13 +72,22 @@ void main() {
         }
 
         vec4 lighting;
+        vec4 textureColor;
+        vec3 n;
         // Lighting
         if (uModeColor == 6 || uModeColor == 7 || uModeColor == 9) {
             if (uModeColor == 6){
                 baseColor = vec4(color, 1);
             }
 
-            vec3 nd = normalize(normal);
+            if (uModeColor == 9){
+                textureColor = texture(uTextureNormal, coord);
+                n = textureColor.rgb * 2.f - 1.f;
+            } else {
+                n = normal;
+            }
+
+            vec3 nd = normalize(n);
             vec3 ld = normalize(lightDirection);
             vec3 vd = normalize(viewDirection);
 
@@ -100,7 +109,7 @@ void main() {
 
             float blend = clamp((spotEffect - uSpotCutOff) / (1 - uSpotCutOff), 0f, 1f);
 
-            if (uModeSpot == 0 && uModeColor != 9){
+            if (uModeSpot == 0){
                 // Light
                 if (uModeLight == 0) {
                     lighting = totalAmbient;
@@ -111,7 +120,7 @@ void main() {
                 } else if (uModeLight == 3) {
                     lighting = totalAmbient + att * (totalDiffuse + totalSpecular);
                 }
-            } else if (uModeSpot == 1 && spotEffect > uSpotCutOff && uModeColor != 9) {
+            } else if (uModeSpot == 1 && spotEffect > uSpotCutOff) {
                 // Spot light
                 if (uModeLight == 0) {
                     lighting = mix(totalAmbient, totalAmbient, blend);
@@ -122,7 +131,7 @@ void main() {
                 } else if (uModeLight == 3) {
                     lighting = mix(totalAmbient, totalAmbient + att * (totalDiffuse + totalSpecular), blend);
                 }
-            } else {
+            } else if (uModeSpot == 1 && spotEffect < uSpotCutOff) {
                 lighting = totalAmbient;
             }
         }

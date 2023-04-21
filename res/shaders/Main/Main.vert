@@ -32,7 +32,7 @@ vec3 getCartesianObject1(vec2 position) {
     float x = position.x;
     float y = position.y;
     float offset = uTime;
-    float z = 0.f;
+    float z = 0.2 * sin(5.0 * position.x + offset);
 
     return vec3(x, y, z);
 }
@@ -133,8 +133,11 @@ vec3 getNormal(vec2 position){
 }
 
 vec3 getTangent(vec2 position){
-    vec3 du = getObject(vec2(position.x + delta, position.y)) - getObject(vec2(position.x - delta, position.y));
-    return vec3(0);
+    vec3 p1 = vec3(position.x + delta, position.y, getObject(position).z);
+    vec3 p2 = vec3(position.x - delta, position.y, getObject(position).z);
+    vec3 t = (p1 - p2);
+
+    return normalize(t);
 }
 
 void main() {
@@ -157,9 +160,11 @@ void main() {
 
         vec4 lightPosition = uView * uModelLight * vec4(uLightSource, 1.f);
 
-        lightDirection = lightPosition.xyz - objectPosition.xyz;
+        if (uModeColor != 9){
+            lightDirection = lightPosition.xyz - objectPosition.xyz;
+            viewDirection = -objectPosition.xyz;
+        }
 
-        viewDirection = -objectPosition.xyz;
 
         dist = length(lightDirection);
 
@@ -167,6 +172,18 @@ void main() {
             color = vec3(0.5, 0.5, 0.5);
         } else if (uModeColor == 7){
             texCoord = vec2(inPosition.xy);
+        } else if (uModeColor == 9) {
+            texCoord = vec2(inPosition.xy);
+            vec3 vLightDirection = normalize(lightPosition.xyz - objectPosition.xyz);
+            vec3 vViewDirection = -normalize(objectPosition.xyz);
+
+            vec3 t = mat3(uModel * uView) * getTangent(inPosition);
+            vec3 b = cross(normalize(normal), normalize(t));
+
+            mat3 tbn = mat3(t, b, normal);
+
+            lightDirection = vLightDirection * tbn;
+            viewDirection = vViewDirection * tbn;
         }
     }
 

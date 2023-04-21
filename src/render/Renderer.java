@@ -40,7 +40,7 @@ public class Renderer extends AbstractRenderer {
     private float lightX = 5, lightY = 5, lightZ = 2;
     private float spotCutOff = 0.8f;
     private final String[] textTopology = {"GL_TRIANGLES", "GL_TRIANGLE_STRIP"};
-    private final String[] textMovement = {"Camera", "Object", "Rotation", "Light"};
+    private final String[] textMovement = {"Camera", "Object", "Rotation", "Light", "Light with camera", "Light with object"};
     private final String[] textPolygon = {"GL_FILL", "GL_LINE", "GL_POINT"};
     private final String[] textColor = {"Color", "Position X, Y, Z", "Normal", "Texture coord U, V", "Depth", "Texture", "Lightning", "Texture and Lightning", "Distance from light", "Normal mapping texture"};
     private final String[] textLight = {"Ambient", "Ambient + Diffuse", "Ambient + Diffuse + Specular", "Ambient + Diffuse + Specular + Attenuation"};
@@ -114,7 +114,9 @@ public class Renderer extends AbstractRenderer {
 
         drawGrid();
 
-        drawLight();
+        if (modeMovement != 4) {
+            drawLight();
+        }
 
         String text = "Change object [O] " + modeObject + "; ";
         text += "Movement mode [M] " + textMovement[modeMovement] + "; ";
@@ -132,6 +134,10 @@ public class Renderer extends AbstractRenderer {
             text = "Object rotation X [WS]; Object rotation Y [AD]; Object rotation Z [QE]; ";
         } else if (modeMovement == 3) {
             text = "Light movement [WSAD]; Up/Down [QE]; ";
+        } else if (modeMovement == 4) {
+            text = "Light with camera movement [WSAD]; Up/Down [QE]; ";
+        } else if (modeMovement == 5) {
+            text = "Light with object movement [WSAD]; Up/Down [QE]; ";
         }
 
         textRenderer.addStr2D(10, 50, text);
@@ -141,10 +147,12 @@ public class Renderer extends AbstractRenderer {
         textRenderer.addStr2D(10, 70, text);
 
         text = "Color mode [C] " + textColor[modeColor] + "; ";
-        if (modeColor == 6 || modeColor == 7) {
+        if (modeColor == 6 || modeColor == 7 || modeColor == 9) {
             text += "Lighting mode [L] " + textLight[modeLight] + "; ";
-            text += "Flash light [F] " + modeSpot + "; ";
-            text += "Spot cut off [Up, Down] " + spotCutOff + "; ";
+            if (modeColor == 6 || modeColor == 7) {
+                text += "Flash light [F] " + modeSpot + "; ";
+                text += "Spot cut off [Up, Down] " + spotCutOff + "; ";
+            }
         }
 
         textRenderer.addStr2D(10, 70, text);
@@ -163,9 +171,12 @@ public class Renderer extends AbstractRenderer {
                     // modeMovement = 1 -> object movement
                     // modeMovement = 2 -> object rotation
                     // modeMovement = 3 -> light movement
+                    // modeMovement = 4 -> Light with camera movement
+                    // modeMovement = 5 -> Light with object movement
                     case GLFW_KEY_W:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.forward(0.5);
                                 break;
                             case 1:
@@ -181,11 +192,19 @@ public class Renderer extends AbstractRenderer {
                                 y = 0.1f;
                                 setLightModelMat();
                                 break;
+                            case 5:
+                                lightY += 0.1f;
+                                y = 0.1f;
+                                setLightModelMat();
+                                y = 0.1;
+                                setModelMat();
+                                break;
                         }
                         break;
                     case GLFW_KEY_S:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.backward(0.5);
                                 break;
                             case 1:
@@ -201,11 +220,19 @@ public class Renderer extends AbstractRenderer {
                                 y = -0.1f;
                                 setLightModelMat();
                                 break;
+                            case 5:
+                                lightY -= 0.1f;
+                                y = -0.1f;
+                                setLightModelMat();
+                                y = -0.1;
+                                setModelMat();
+                                break;
                         }
                         break;
                     case GLFW_KEY_A:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.left(0.5);
                                 break;
                             case 1:
@@ -221,11 +248,19 @@ public class Renderer extends AbstractRenderer {
                                 x = 0.1f;
                                 setLightModelMat();
                                 break;
+                            case 5:
+                                lightX += 0.1f;
+                                x = 0.1f;
+                                setLightModelMat();
+                                x = 0.1;
+                                setModelMat();
+                                break;
                         }
                         break;
                     case GLFW_KEY_D:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.right(0.5);
                                 break;
                             case 1:
@@ -241,11 +276,19 @@ public class Renderer extends AbstractRenderer {
                                 x = -0.1f;
                                 setLightModelMat();
                                 break;
+                            case 5:
+                                lightX -= 0.1f;
+                                x = -0.1f;
+                                setLightModelMat();
+                                x = -0.1;
+                                setModelMat();
+                                break;
                         }
                         break;
                     case GLFW_KEY_Q:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.up(0.5);
                                 break;
                             case 1:
@@ -261,11 +304,19 @@ public class Renderer extends AbstractRenderer {
                                 z = 0.1f;
                                 setLightModelMat();
                                 break;
+                            case 5:
+                                lightZ += 0.1f;
+                                z = 0.1f;
+                                setLightModelMat();
+                                z = 0.1;
+                                setModelMat();
+                                break;
                         }
                         break;
                     case GLFW_KEY_E:
                         switch (modeMovement) {
                             case 0:
+                            case 4:
                                 camera = camera.down(0.5);
                                 break;
                             case 1:
@@ -280,6 +331,13 @@ public class Renderer extends AbstractRenderer {
                                 lightZ -= 0.1f;
                                 z = -0.1f;
                                 setLightModelMat();
+                                break;
+                            case 5:
+                                lightZ -= 0.1f;
+                                z = -0.1f;
+                                setLightModelMat();
+                                z = -0.1;
+                                setModelMat();
                                 break;
                         }
                         break;
@@ -299,7 +357,7 @@ public class Renderer extends AbstractRenderer {
                         break;
                     // Change movement mode
                     case GLFW_KEY_M:
-                        modeMovement = (++modeMovement) % 4;
+                        modeMovement = (++modeMovement) % 6;
                         break;
                     // Change topology mode
                     case GLFW_KEY_T:
@@ -316,11 +374,15 @@ public class Renderer extends AbstractRenderer {
                         break;
                     // Change lighting
                     case GLFW_KEY_L:
-                        modeLight = (++modeLight) % 4;
+                        if (modeColor == 6 || modeColor == 7 || modeColor == 9) {
+                            modeLight = (++modeLight) % 4;
+                        }
                         break;
                     // Change spot
                     case GLFW_KEY_F:
-                        modeSpot = !modeSpot;
+                        if (modeColor == 6 || modeColor == 7) {
+                            modeSpot = !modeSpot;
+                        }
                         break;
                     // Change number of rendered triangles
                     case GLFW_KEY_KP_ADD:
@@ -334,10 +396,14 @@ public class Renderer extends AbstractRenderer {
                         }
                         break;
                     case GLFW_KEY_UP:
-                        spotCutOff += 0.01f;
+                        if (modeColor == 6 || modeColor == 7) {
+                            spotCutOff += 0.01f;
+                        }
                         break;
                     case GLFW_KEY_DOWN:
-                        spotCutOff -= 0.01f;
+                        if (modeColor == 6 || modeColor == 7) {
+                            spotCutOff -= 0.01f;
+                        }
                         break;
                 }
             }
@@ -461,14 +527,19 @@ public class Renderer extends AbstractRenderer {
 
         glUniform1f(loc_uTime, (float) glfwGetTime());
 
-        glUniform3f(loc_uLightSource, lightX, lightY, lightZ);
+        if (modeMovement == 4) {
+            glUniform3f(loc_uLightSource, (float) camera.getEye().getX(), (float) camera.getEye().getY(), (float) camera.getEye().getZ());
+            glUniform3f(loc_uSpotDirection, (float) camera.getEye().getX(), (float) camera.getEye().getY(), (float) camera.getEye().getZ());
+        } else {
+            glUniform3f(loc_uLightSource, lightX, lightY, lightZ);
+            glUniform3f(loc_uSpotDirection, lightX, lightY, lightZ);
+        }
         glUniform1f(loc_uSpecularPower, 1f);
         glUniform1f(loc_uConstantAttenuation, 0.5f);
         glUniform1f(loc_uLinearAttenuation, 0.2f);
         glUniform1f(loc_uQuadraticAttenuation, 0.05f);
 
         glUniform1f(loc_uSpotCutOff, spotCutOff);
-        glUniform3f(loc_uSpotDirection, lightX, lightY, lightZ);
 
         texture.bind(shaderProgram, "uTextureID", 0);
         textureNormal.bind(shaderProgram, "uTextureNormal", 1);
