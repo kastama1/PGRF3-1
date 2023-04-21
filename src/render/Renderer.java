@@ -405,6 +405,10 @@ public class Renderer extends AbstractRenderer {
                             spotCutOff -= 0.01f;
                         }
                         break;
+                    case GLFW_KEY_R:
+                        modeProjection = (++modeProjection) % 2;
+                        initProjection();
+                        break;
                 }
             }
         }
